@@ -15,7 +15,6 @@ packages = [
 readme = "README.md"
 
 [tool.poetry.dependencies]
-private-packages = { version = "*", source = "company-pypi" }
 python = ">=3.9,<4.0"
 qdrant-client = "^1.9.1"
 pydantic = "^2.7.3"
