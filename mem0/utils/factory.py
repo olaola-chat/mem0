@@ -2,6 +2,7 @@ import importlib
 
 from mem0.configs.embeddings.base import BaseEmbedderConfig
 from mem0.configs.llms.base import BaseLlmConfig
+from mem0.vector_stores.dashvector import DashVectorDB
 
 
 def load_class(class_type):
@@ -70,6 +71,7 @@ class VectorStoreFactory:
         "redis": "mem0.vector_stores.redis.RedisDB",
         "elasticsearch": "mem0.vector_stores.elasticsearch.ElasticsearchDB",
         "opensearch": "mem0.vector_stores.opensearch.OpenSearchDB",
+        "dashvector": "mem0.vector_stores.dashvector.DashVectorDB",
     }
 
     @classmethod
