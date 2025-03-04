@@ -509,14 +509,7 @@ class Memory(MemoryBase):
         return {"message": "Memory deleted successfully!"}
 
     def delete_all(self, user_id=None, agent_id=None, run_id=None):
-        """
-        Delete all memories.
-
-        Args:
-            user_id (str, optional): ID of the user to delete memories for. Defaults to None.
-            agent_id (str, optional): ID of the agent to delete memories for. Defaults to None.
-            run_id (str, optional): ID of the run to delete memories for. Defaults to None.
-        """
+        """Delete all memories."""
         filters = {}
         if user_id:
             filters["user_id"] = user_id
@@ -622,7 +615,11 @@ class Memory(MemoryBase):
     def _delete_memory(self, memory_id):
         logging.info(f"Deleting memory with {memory_id=}")
         existing_memory = self.vector_store.get(vector_id=memory_id)
-        prev_value = existing_memory.payload["data"]
+        if not existing_memory:
+            logger.warning(f"Memory with ID {memory_id} not found, skipping delete operation")
+            return None
+            
+        prev_value = existing_memory.payload.get("data")
         self.vector_store.delete(vector_id=memory_id)
         self.db.add_history(memory_id, prev_value, None, "DELETE", is_deleted=1)
         capture_event("mem0._delete_memory", self, {"memory_id": memory_id})

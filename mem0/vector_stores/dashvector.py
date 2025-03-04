@@ -60,7 +60,6 @@ class DashVectorDB(VectorStoreBase):
         
         # 检查是否已存在该集合，若不存在则创建
         collections = self.list_cols()
-        print(f"metric_type.value: {metric_type.value}")
         if collection_name not in collections:
             self.create_col(collection_name, embedding_model_dims, metric_type)
         
@@ -122,7 +121,7 @@ class DashVectorDB(VectorStoreBase):
             # 从 payload 中提取各个字段，如果不存在则使用默认值
             fields = {
                 "user_id": payload.get("user_id", ""),
-                "data": json.dumps(payload.get("data", {})),
+                "data": payload.get("data", ""),  # 直接存储 data 字段，不进行 JSON 序列化
                 "hash": payload.get("hash", ""),
                 "created_at": payload.get("created_at", "")
             }
@@ -189,45 +188,25 @@ class DashVectorDB(VectorStoreBase):
             List[OutputData]: Parsed results.
         """
         results = []
-        
-        # 根据 DashVector 的结果结构进行适配
-        if isinstance(data, list):
-            for item in data:
-                try:
-                    # 提取ID
-                    item_id = getattr(item, "id", None)
-                    
-                    # 提取分数
-                    score = getattr(item, "score", None)
-                    
-                    # 提取字段并重建 payload
-                    fields = getattr(item, "fields", {})
-                    
-                    # 构建 payload 字典
-                    payload = {}
-                    
-                    # 添加 user_id (如果存在)
-                    if "user_id" in fields:
-                        payload["user_id"] = fields["user_id"]
-                    
-                    # 尝试解析 data 字段 (如果存在)
-                    if "data" in fields:
-                        try:
-                            data_dict = json.loads(fields["data"])
-                            payload.update(data_dict)
-                        except:
-                            payload["data"] = fields["data"]
-                    
-                    # 添加其他字段
-                    if "hash" in fields:
-                        payload["hash"] = fields["hash"]
-                    
-                    if "created_at" in fields:
-                        payload["created_at"] = fields["created_at"]
-                    
-                    results.append(OutputData(id=item_id, score=score, payload=payload))
-                except Exception as e:
-                    logger.error(f"解析结果时出错: {e}")
+        if not isinstance(data, list):
+            return results
+            
+        for item in data:
+            try:
+                # 提取基本信息
+                item_id = getattr(item, "id", None)
+                score = getattr(item, "score", None)
+                fields = getattr(item, "fields", {})
+                # 直接使用字段作为 payload
+                payload = dict(fields)
+                
+                # 创建 OutputData 对象
+                output = OutputData(id=item_id, score=score, payload=payload)
+                results.append(output)
+                
+            except Exception as e:
+                logger.error(f"解析结果时出错: {e}")
+                continue
         
         return results
 
@@ -277,7 +256,14 @@ class DashVectorDB(VectorStoreBase):
             update_data["vector"] = vector
         
         if payload:
-            update_data["fields"] = {"metadata": payload}
+            fields = {
+                "user_id": payload.get("user_id", ""),
+                "data": payload.get("data", ""),
+                "hash": payload.get("hash", ""),
+                "created_at": payload.get("created_at", ""),
+                "updated_at": payload.get("updated_at", "")
+            }
+            update_data["fields"] = fields
         
         self.collection.update([update_data])
         logger.info(f"Updated vector {vector_id} in collection {self.collection_name}.")
@@ -292,14 +278,22 @@ class DashVectorDB(VectorStoreBase):
         Returns:
             OutputData: Retrieved vector.
         """
-        result = self.collection.fetch(ids=[vector_id])
-        data = result.get("data", [])
-        
-        if not data:
+        try:
+            result = self.collection.fetch(ids=[vector_id])
+            if not result or not result.output:
+                logger.warning(f"Vector with ID {vector_id} not found")
+                return None
+
+            # 解析结果
+            parsed_data = self._parse_output([result.output])
+            if not parsed_data:
+                logger.warning(f"Failed to parse data for vector ID {vector_id}")
+                return None
+
+            return parsed_data[0]
+        except Exception as e:
+            logger.error(f"Error retrieving vector {vector_id}: {e}")
             return None
-        
-        parsed_data = self._parse_output(data)
-        return parsed_data[0] if parsed_data else None
 
     def list_cols(self):
         """
@@ -337,16 +331,15 @@ class DashVectorDB(VectorStoreBase):
             limit (int, optional): Number of vectors to return. Defaults to 100.
             
         Returns:
-            List[OutputData]: List of vectors.
+            List[List[OutputData]]: List of vectors wrapped in a list.
         """
         filter_expr = self._create_filter(filters)
         
         # 在 DashVector 中，可以使用 query 不带 query_vector 参数来列出所有向量
-        # 但需要注意这可能不是最高效的方法，取决于 DashVector 的实现
         results = self.collection.query(
             filter=filter_expr,
             topk=limit,
             include_vector=True
         )
-        
-        return self._parse_output(results.get("data", [])) 
+        # 将结果包装在列表中返回，以匹配其他 vector store 的实现
+        return [self._parse_output(results.output)]

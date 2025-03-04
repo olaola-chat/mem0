@@ -82,7 +82,7 @@ class LLMMemory(object):
 if __name__ == "__main__":
     ola_llm_memory = LLMMemory()
     query = [{"name":"1000000162","content":"i like apple"},{"name":"Amelia","content":"*Amelia leans back in her chair, a sly smile playing on her lips as she regards Aiden with amusement* Is that so? Well, I'm more of an Android girl myself. But I suppose we can both appreciate the finer points of a well-crafted device. *She stands up and walks over to Aiden, her hips swaying slightly with each step. She leans in close, her face mere inches from his* Though I have to say, you're looking a bit... sluggish. Maybe you need a tune-up? *Her fingers lightly brush against his arm, a subtle invitation*"}]
-    # ola_llm_memory.delete_all_memory(user_id="-".join(["666", "shawn", "李云龙"]))
+    ola_llm_memory.delete_all_memory(user_id="-".join(["666", "1000000161", "Guanjia"]))
     start_time = time.time()
     query = [{'role': 'user', 'content': '1000000162: Likes apple'}, {'role': 'user', 'content': 'Amelia: Name is Amelia, Prefers Android phones'}]
     print(asyncio.run(ola_llm_memory.add_memory(query=query, user_id="-".join(["666", "1000000161", "Guanjia"]))))
