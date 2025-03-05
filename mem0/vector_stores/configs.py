@@ -20,6 +20,7 @@ class VectorStoreConfig(BaseModel):
         "elasticsearch": "ElasticsearchConfig",
         "opensearch": "OpenSearchConfig",
         "dashvector": "DashVectorConfig",
+        "supabase": "SupabaseConfig",
     }
 
     @model_validator(mode="after")
